@@ -38,6 +38,8 @@ public class Perceptron{
 	*/
 	public double getWeightedSum(double[] inActs){
 		double total = 0;
+		System.out.println("inacts size = " + inActs.length);
+		System.out.println("insize = "+ inSize);
 		if(inActs.length != inSize)
 			throw new IllegalArgumentException("Array of inputs is of incorrect size");
 		for(int i=0; i<inSize; i++){
@@ -51,8 +53,7 @@ public class Perceptron{
 	@param value The value to get sigmoid for
 	@return The output of the sigmoid function for the parameter
 	*/
-	//I found the one liner for this equation in this blog post: 
-	//http://chronicles.blog.ryanrampersad.com/2009/02/sigmoid-function-in-java/
+
 	public double sigmoid(double value){
 		return (1/(1 + Math.pow(Math.E,(-1*value)))); 
 	}
@@ -83,7 +84,7 @@ public class Perceptron{
 	@return The output of the derivative of a sigmoid function for the given value.
 	*/
 	public double sigmoidDeriv(double value){
-		return 0; /*REPLACE WITH YOUR CODE */
+		return sigmoid(value)* (1 - sigmoid(value)); /*REPLACE WITH YOUR CODE */
 	}
 	
 	/**
@@ -95,7 +96,11 @@ public class Perceptron{
 	@return The derivative of the sigmoid of the weighted input
 	*/
 	public double sigmoidActivationDeriv(double[] inActs){
-		return 0; /*REPLACE WITH YOUR CODE */
+		ArrayList<Double> inacts = NeuralNetUtil.toWrapperList(inActs);
+		inacts.add(0, (double) 1);
+		double[] newInActs = NeuralNetUtil.toPrimitiveArray(inacts);
+		double weightedSum = getWeightedSum(newInActs);
+		return sigmoidDeriv(weightedSum);
 	}
 	
 	/**
@@ -105,9 +110,19 @@ public class Perceptron{
 	@param delta If this is an output, then g'(z)*error. If this is a hidden unit, the the as defined g'(z)*sum over weight*delta for the next layer
 	@return The total modification of all the weights (sum of each abs(modification))
 	*/
-	public double updateWeights(double[] inActs, double alpha, double delta){
+	public double updateWeights(double[] inActs, double alpha, double delta){ //doesn't work right -- need to fix
 		double totalModification = 0;
-		/* INSERT YOUR CODE HERE */
+		ArrayList<Double> inacts = NeuralNetUtil.toWrapperList(inActs);
+		inacts.add(0, (double) 1);
+		double[] newInActs = NeuralNetUtil.toPrimitiveArray(inacts);
+		//for hidden layer:
+		int count = 0;
+		for (double weight: weights) {
+			double startingWeight = weights[count];
+			weights[count] = weights[count] + (alpha * newInActs[count] * delta);
+			totalModification = totalModification + Math.abs(startingWeight - weights[count]);
+			count++;
+		}
 		return totalModification;
 	}
 	

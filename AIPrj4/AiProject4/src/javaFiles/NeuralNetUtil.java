@@ -5,7 +5,7 @@ import java.io.*;
 public class NeuralNetUtil{
 	/* Returns limit # of examples from penDigits file*/
 	public static HashSet<Example> getNNPenData(String filename, int limit){
-		if(filename == null) filename = "datasets/pendigits.txt";
+		if(filename == null) filename = "pendigits.txt";
 		if(limit <= 0) limit = 100000;
 		
 		HashSet<Example> examples = new HashSet<Example>();
@@ -21,9 +21,9 @@ public class NeuralNetUtil{
 				int count = 0;
 				for(String val : line.split(",")){
 					if(count == 16) 
-						outVec[Integer.parseInt(val)] = 1;
+						outVec[Integer.parseInt((val.trim()))] = 1;  //had to add trim() method, since it kept getting caught up on input string " 47" (whitespace)
 					else
-						inVec[count] = Integer.parseInt(val)/100.0;
+						inVec[count] = Integer.parseInt(val.trim())/100.0; //same here^^
 					count++;
 				}
 				examples.add(new Example(inVec, outVec));
@@ -44,7 +44,7 @@ public class NeuralNetUtil{
 	*/
 	public static HashSet<Example> getPenTrainingSet(int size){
 		if(size<=0) size = 10000;
-		return getNNPenData("datasets/pendigitsTrain.txt", (int) (.8*size));
+		return getNNPenData("pendigitsTrain.txt", (int) (.8*size)); //altered this file because I changed the file location
 	}
 	
 	/*
@@ -52,7 +52,7 @@ public class NeuralNetUtil{
 	*/
 	public static HashSet<Example> getPenTestSet(int size){
 		if(size<=0) size = 10000;
-		return getNNPenData("datasets/pendigitsTest.txt", (int) (.2*size));
+		return getNNPenData("pendigitsTest.txt", (int) (.2*size)); //ditto ^^
 	}
 		
 	/*

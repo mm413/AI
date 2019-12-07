@@ -77,7 +77,19 @@ public class NeuralNet{
 	@return A list of lists. The first list is the input list, and the others are lists of the output values of all perceptrons in each layer.
 	*/
 	public ArrayList<ArrayList<Double>> feedForward(ArrayList<Double> inActs){
-		return null; /*REPLACE WITH YOUR CODE*/
+		ArrayList<ArrayList<Double>> listOfLists = new ArrayList<ArrayList<Double>>();
+		listOfLists.add(inActs);
+		for (ArrayList<Perceptron> layer : layers) {
+			int previousLayer = 0;
+			ArrayList<Double> layersOutputVals = new ArrayList<Double>();
+			for (Perceptron percep : layer) {
+				layersOutputVals.add(percep.sigmoidActivation(NeuralNetUtil.toPrimitiveArray(listOfLists.get(previousLayer))));
+			}
+			previousLayer++;
+			System.out.println(layersOutputVals);
+			listOfLists.add(layersOutputVals);
+		}
+		return listOfLists; 
 	}
 	
 	/**
@@ -101,15 +113,15 @@ public class NeuralNet{
 			ArrayList<ArrayList<Double>> deltas = new ArrayList<ArrayList<Double>>();
 			
 			// Neural net output list
-			ArrayList<ArrayList<Double>> allLayerOutput = null; //TODO - Replace null with neural net list computation
+			ArrayList<ArrayList<Double>> allLayerOutput = this.feedForward(e.inputs); //TODO - Replace null with neural net list computation 
 			ArrayList<Double> lastLayerOutput = allLayerOutput.get(allLayerOutput.size()-1);
 			
 			// Iterate through all output layer neurons
 			ArrayList<Double> outDelta = new ArrayList<Double>();
 			for(int outputNum=0; outputNum < e.getOutputSize(); outputNum++){
-				double gPrime = outputLayer.get(outputNum).sigmoidActivationDeriv(null); // TODO -- Replace null with correct argument
-				double error = 0; // TODO -- Replace 0 with correct value
-				double delta = 0; // TODO -- Replace 0 with correct value
+				double gPrime = outputLayer.get(outputNum).sigmoidActivationDeriv(NeuralNetUtil.toPrimitiveArray(allLayerOutput.get(allLayerOutput.size()-2))); // TODO -- Replace null with correct argument
+				double error = e.outputs.get(outputNum) - lastLayerOutput.get(outputNum); // TODO -- Replace 0 with correct value differece between outputted value and expected output value
+				double delta = gPrime * error; // TODO -- Replace 0 with correct value
 				averageError += error*error/2;
 				outDelta.add(new Double(delta));
 			}
@@ -122,8 +134,8 @@ public class NeuralNet{
 				ArrayList<Double> hiddenDelta = new ArrayList<Double>();
 				//Iterate through all neurons in this layer
 				for(int neuronNum=0; neuronNum < layer.size(); neuronNum++){
-					double gPrime = layer.get(neuronNum).sigmoidActivationDeriv(null); // TODO -- Replace null with correct argument
-					double delta = 0; // TODO -- Replace 0 with correct value
+					double gPrime = layer.get(neuronNum).sigmoidActivationDeriv(NeuralNetUtil.toPrimitiveArray(allLayerOutput.get(layerNum -1))); // TODO -- Replace null with correct argument
+					double delta = gPrime*layer.get(neuronNum).getWeightedSum(NeuralNetUtil.toPrimitiveArray(outDelta)) ; // TODO -- Replace 0 with correct value delta
 					hiddenDelta.add(new Double(delta));
 				}
 				deltas.add(0, hiddenDelta);
@@ -134,7 +146,7 @@ public class NeuralNet{
 			for(int numLayer = 0; numLayer < numLayers; numLayer++){
 				ArrayList<Perceptron> layer = layers.get(numLayer);
 				for(int numNeuron = 0; numNeuron < layer.size(); numNeuron++){
-					double weightMod = layer.get(numNeuron).updateWeights(null, 0, 0); // TODO -- Replace null and 0s with correct arguments
+					double weightMod = layer.get(numNeuron).updateWeights(NeuralNetUtil.toPrimitiveArray(allLayerOutput.get(numLayer)), alpha, deltas.get(numLayer).get(numNeuron)); // TODO -- Replace null and 0s with correct arguments
 					averageWeightChange += weightMod;
 					numWeights += layer.get(numNeuron).inSize;
 				}
@@ -189,7 +201,7 @@ public class NeuralNet{
 	*/
 	public static NeuralNet buildNeuralNet(HashSet<Example> examplesTrain, HashSet<Example> examplesTest, double alpha, double weightChangeThreshold, int numInput, int[] hiddenLayerList, int numOutput, int maxItr, NeuralNet startNNet){
 		
-		if(startNNet != null){
+		if(startNNet != null){ //here if it's not a new neural net
 			hiddenLayerList = new int[startNNet.numHiddenLayers];
 			int i=0;
 			for(ArrayList<Perceptron> layer:startNNet.hiddenLayers){
@@ -215,31 +227,49 @@ public class NeuralNet{
 		int iteration = 0;
 		double trainError = 0;
 		double weightMod = 0;
+
+		
 		
 		/* YOUR CODE HERE */
-		
+		int itterNum = 0;
+		double[] backpropCall = net.backPropLearning(examplesTrain, alpha);
+		while ((backpropCall[1] < weightChangeThreshold) && (itterNum < maxItr)) {
+			itterNum++;
+			if(iteration%10 == 0){
+				System.out.println(String.format("On iteration %d; training error %f and weight change %f", iteration, trainError, weightMod));
+			}
+			else
+				System.out.print(".");
+		}
 		/* Iterate for as long as it takes to reach weight modification threshold */
 		
-		// You can include this code in your loop for printing
-		/*if(iteration%10 == 0){
-			System.out.println(String.format("On iteration %d; training error %f and weight change %f", iteration, trainError, weightMod));
-		}
-		else
-			System.out.print(".");
-		*/
 		
 		System.out.println(String.format("Finished after %d iterations with training error %f and weight change %f", iteration, trainError, weightMod));
 		
 		/*
 		Get the accuracy of your Neural Network on the test examples.
-		For each text example, you should first feedforward to get the NN outputs. Then, round the list of outputs from the output layer of the neural net.
+		For each test example, you should first feedforward to get the NN outputs. Then, round the list of outputs from the output layer of the neural net.
 		If the entire rounded list from the NN matches with the known list from the test example, then add to testCorrect, else add to testError.
 		*/ 
 		
 		int testError = 0;
 		int testCorrect = 0;
-		
-		double testAccuracy = 0; // (num correct / num total)
+
+		for (Example ex: examplesTest) {
+			ArrayList<Double> output = net.feedForward(ex.inputs).get(net.feedForward(ex.inputs).size()-1);
+			boolean same = true;
+			for (int i = 0; i > output.size(); i++) {
+				if (round(output.get(i)) != round(ex.getOutputs().get(i))) {
+					same = false;
+				}
+			}
+			if (same) {
+				testCorrect++;
+			}else {
+				testError++;
+			}
+		}
+		double testAccuracy = testCorrect / (testError+testCorrect); // (num correct / num total)
 		
 		System.out.println(String.format("Feed Forward Test correctly classified %d, incorrectly classified %d, test percent accurate %f", testCorrect, testError, testAccuracy));
 		
@@ -255,4 +285,16 @@ public class NeuralNet{
 		return lastWeightMod;
 	}
 	
+	
+	// got the base of this from https://stackoverflow.com/questions/2654839/rounding-a-double-to-turn-it-into-an-int-java
+	public static int round(double d){
+	    double dAbs = Math.abs(d);
+	    int i = (int) dAbs;
+	    double result = dAbs - (double) i;
+	    if(result<0.5){
+	        return  d<0 ? -i : i;            
+	    }else{
+	        return  d<0 ? -(i+1) : i+1;          
+	    }
+	}
 }
