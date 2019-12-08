@@ -1,4 +1,5 @@
 package javaFiles;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Arrays;
@@ -79,14 +80,14 @@ public class NeuralNet{
 	public ArrayList<ArrayList<Double>> feedForward(ArrayList<Double> inActs){
 		ArrayList<ArrayList<Double>> listOfLists = new ArrayList<ArrayList<Double>>();
 		listOfLists.add(inActs);
+		int previousLayer = 0;
 		for (ArrayList<Perceptron> layer : layers) {
-			int previousLayer = 0;
 			ArrayList<Double> layersOutputVals = new ArrayList<Double>();
 			for (Perceptron percep : layer) {
 				layersOutputVals.add(percep.sigmoidActivation(NeuralNetUtil.toPrimitiveArray(listOfLists.get(previousLayer))));
 			}
 			previousLayer++;
-			System.out.println(layersOutputVals);
+		//	System.out.println(layersOutputVals);
 			listOfLists.add(layersOutputVals);
 		}
 		return listOfLists; 
@@ -115,29 +116,37 @@ public class NeuralNet{
 			// Neural net output list
 			ArrayList<ArrayList<Double>> allLayerOutput = this.feedForward(e.inputs); //TODO - Replace null with neural net list computation 
 			ArrayList<Double> lastLayerOutput = allLayerOutput.get(allLayerOutput.size()-1);
+			ArrayList<Double> secondToLastLayerOutput = allLayerOutput.get(allLayerOutput.size()-2);
 			
 			// Iterate through all output layer neurons
 			ArrayList<Double> outDelta = new ArrayList<Double>();
 			for(int outputNum=0; outputNum < e.getOutputSize(); outputNum++){
-				double gPrime = outputLayer.get(outputNum).sigmoidActivationDeriv(NeuralNetUtil.toPrimitiveArray(allLayerOutput.get(allLayerOutput.size()-2))); // TODO -- Replace null with correct argument
+				double gPrime = outputLayer.get(outputNum).sigmoidActivationDeriv(NeuralNetUtil.toPrimitiveArray(secondToLastLayerOutput)); // TODO -- Replace null with correct argument
 				double error = e.outputs.get(outputNum) - lastLayerOutput.get(outputNum); // TODO -- Replace 0 with correct value differece between outputted value and expected output value
 				double delta = gPrime * error; // TODO -- Replace 0 with correct value
 				averageError += error*error/2;
 				outDelta.add(new Double(delta));
+				//System.out.println(delta);
 			}
 			deltas.add(outDelta);
 			
 			// Backpropagate through all hidden layers, calculating and storing the deltas for each perceptron layer
 			for(int layerNum=numHiddenLayers-1; layerNum >=0; layerNum--){
+				int deltaLayerCount = 0;
 				ArrayList<Perceptron> layer = layers.get(layerNum);
 				ArrayList<Perceptron> nextLayer = layers.get(layerNum+1);
 				ArrayList<Double> hiddenDelta = new ArrayList<Double>();
 				//Iterate through all neurons in this layer
 				for(int neuronNum=0; neuronNum < layer.size(); neuronNum++){
-					double gPrime = layer.get(neuronNum).sigmoidActivationDeriv(NeuralNetUtil.toPrimitiveArray(allLayerOutput.get(layerNum -1))); // TODO -- Replace null with correct argument
-					double delta = gPrime*layer.get(neuronNum).getWeightedSum(NeuralNetUtil.toPrimitiveArray(outDelta)) ; // TODO -- Replace 0 with correct value delta
+					double gPrime = layer.get(neuronNum).sigmoidActivationDeriv(NeuralNetUtil.toPrimitiveArray(allLayerOutput.get(0))); // TODO -- Replace null with correct argument
+					double summation = 0;
+					for (int i = 0; i < nextLayer.size(); i++) {
+						summation+= layer.get(neuronNum).weights[i] *deltas.get(deltaLayerCount).get(i);
+					}
+					double delta = gPrime* summation; // TODO -- Replace 0 with correct value delta done below.
 					hiddenDelta.add(new Double(delta));
 				}
+				deltaLayerCount++;
 				deltas.add(0, hiddenDelta);
 			}
 			//Get output of all layers
@@ -224,7 +233,7 @@ public class NeuralNet{
 			net = startNNet;
 		}
 		
-		int iteration = 0;
+
 		double trainError = 0;
 		double weightMod = 0;
 
@@ -232,11 +241,18 @@ public class NeuralNet{
 		
 		/* YOUR CODE HERE */
 		int itterNum = 0;
-		double[] backpropCall = net.backPropLearning(examplesTrain, alpha);
-		while ((backpropCall[1] < weightChangeThreshold) && (itterNum < maxItr)) {
+
+		//while ((backpropCall[1] > weightChangeThreshold) || (itterNum > maxItr)) {
+		for (int i = 0; i < maxItr; i++) {
+			double[] backPropCall = net.backPropLearning(examplesTrain, alpha);
 			itterNum++;
-			if(iteration%10 == 0){
-				System.out.println(String.format("On iteration %d; training error %f and weight change %f", iteration, trainError, weightMod));
+			trainError = backPropCall[0];
+			weightMod = backPropCall[1];
+			if (backPropCall[1] < weightChangeThreshold) {
+				break;
+			}
+			if(itterNum%10 == 0){
+				System.out.println(String.format("On iteration %d; training error %f and weight change %f", itterNum, trainError, weightMod));
 			}
 			else
 				System.out.print(".");
@@ -244,7 +260,7 @@ public class NeuralNet{
 		/* Iterate for as long as it takes to reach weight modification threshold */
 		
 		
-		System.out.println(String.format("Finished after %d iterations with training error %f and weight change %f", iteration, trainError, weightMod));
+		System.out.println(String.format("Finished after %d iterations with training error %f and weight change %f", itterNum, trainError, weightMod));
 		
 		/*
 		Get the accuracy of your Neural Network on the test examples.
@@ -254,11 +270,11 @@ public class NeuralNet{
 		
 		int testError = 0;
 		int testCorrect = 0;
-
 		for (Example ex: examplesTest) {
 			ArrayList<Double> output = net.feedForward(ex.inputs).get(net.feedForward(ex.inputs).size()-1);
 			boolean same = true;
-			for (int i = 0; i > output.size(); i++) {
+			for (int i = 0; i < output.size(); i++) {
+				//System.out.println("Testing for: " + round(output.get(i)) + " == " + round(ex.getOutputs().get(i)));
 				if (round(output.get(i)) != round(ex.getOutputs().get(i))) {
 					same = false;
 				}
@@ -269,9 +285,10 @@ public class NeuralNet{
 				testError++;
 			}
 		}
-		double testAccuracy = testCorrect / (testError+testCorrect); // (num correct / num total)
-		
-		System.out.println(String.format("Feed Forward Test correctly classified %d, incorrectly classified %d, test percent accurate %f", testCorrect, testError, testAccuracy));
+		int total = testError + testCorrect;
+		DecimalFormat df = new DecimalFormat("0.00");
+		double accuracy = (double) testCorrect / total;
+		System.out.println(String.format("Feed Forward Test correctly classified: %d, incorrectly classified: %d, test accuracy: "+ df.format(accuracy*100), testCorrect, testError));
 		
 		lastWeightMod = weightMod; // Store last value of weightMod before returning. Use getLastWeightMod() to retrieve value
 		return net;

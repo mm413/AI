@@ -38,8 +38,8 @@ public class Perceptron{
 	*/
 	public double getWeightedSum(double[] inActs){
 		double total = 0;
-		System.out.println("inacts size = " + inActs.length);
-		System.out.println("insize = "+ inSize);
+//		System.out.println("inacts size = " + inActs.length);
+//		System.out.println("insize = "+ inSize);
 		if(inActs.length != inSize)
 			throw new IllegalArgumentException("Array of inputs is of incorrect size");
 		for(int i=0; i<inSize; i++){
